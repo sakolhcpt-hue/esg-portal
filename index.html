@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <base target="_top">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    /* ═══════════════════════════════════════════════
+       AMATA VN — ESG Portal Theme
+    ═══════════════════════════════════════════════ */
+    :root {
+      --amata-g1: #084D38; --amata-g2: #0D7A5C; --amata-g3: #12A078; --amata-g4: #1DC998;
+      --amata-b1: #1A8ABF; --amata-b2: #3BB4E5; --amata-b3: #6DCBEE;
+      --sb-bg1: #0D1526; --sb-bg2: #091120; --sb-sep: rgba(255,255,255,0.07);
+
+      --bg-body:   #EDF0F4; --bg-card:   #FFFFFF;
+      --text-main: #1C2B35; --text-muted: #4A6070; --text-faint: #8A9EAE;
+      --border-color: rgba(0,0,0,0.08); --border-med:   rgba(0,0,0,0.13);
+      --select-bg:    #F5F7FA;
+
+      --color-t1: var(--amata-g2);   
+      --color-t2: var(--amata-b1);   
+      --company-color: var(--color-t1);
+
+      --prev-line:  rgba(148, 163, 184, 0.50);
+      --prev-label: rgba(74, 96, 112, 0.50);
+    }
+    
+    [data-theme="dark"] {
+      --bg-body:   #13181F; --bg-card:   #1C2430;
+      --text-main: #DDE6ED; --text-muted: #8FA8BA; --text-faint: #5A7080;
+      --border-color: rgba(255,255,255,0.08); --border-med:   rgba(255,255,255,0.13);
+      --select-bg:    #222D38;
+      --prev-line:  rgba(148, 163, 184, 0.50);
+      --prev-label: rgba(148, 189, 235, 0.50);
+      --color-t1: var(--amata-g4);
+      --color-t2: var(--amata-b2);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-body); color: var(--text-main);
+      display: flex; height: 100vh; overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: linear-gradient(180deg, var(--sb-bg1) 0%, var(--sb-bg2) 100%);
+      display: flex; flex-direction: column; position: relative; z-index: 10;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.35);
+    }
+    .sidebar::after {
+      content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 1px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+      pointer-events: none;
+    }
+    .sidebar-header {
+      padding: 16px; border-bottom: 1px solid var(--sb-sep);
+      display: flex; flex-direction: row; align-items: center; gap: 12px;
+    }
+    .sidebar-header img { max-height: 40px; width: auto; object-fit: contain; }
+    .sidebar-brand-text { font-size: 15px; font-weight: 700; color: #FFFFFF; letter-spacing: 0.5px; white-space: nowrap; }
+    
+    .amata-css-logo { display: none; }
+    .amata-wordmark { font-size: 16px; font-weight: 800; letter-spacing: 2px; color: var(--amata-g3); line-height: 1; text-shadow: 0 0 20px rgba(13,122,92,0.45); }
+    .amata-sep-bar { display: flex; gap: 2px; align-items: center; height: 2px; margin: 3px 0; }
+    .amata-seg { height: 2px; border-radius: 1px; background: rgba(255,255,255,0.30); }
+    .vn-label { font-size: 10px; font-weight: 700; letter-spacing: 3px; color: var(--amata-b2); text-align: left; text-shadow: 0 0 12px rgba(59,180,229,0.50); }
+
+    .sidebar-section { font-size: 9px; font-weight: 600; letter-spacing: 0.9px; text-transform: uppercase; color: rgba(255,255,255,0.30); padding: 12px 16px 5px; }
+
+    .nav-btn {
+      background: none; border: none; border-left: 3px solid transparent; width: 100%; text-align: left; padding: 11px 16px;
+      font-size: 13px; font-weight: 500; color: #FFFFFF; opacity: 0.50; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.15s;
+    }
+    .nav-btn:hover { opacity: 0.80; background: rgba(255,255,255,0.05); }
+    .nav-btn svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+
+    .nav-btn.active-ghg { opacity: 1; border-left-color: var(--amata-g4); background: rgba(29,201,152,0.09); text-shadow: 0 0 8px rgba(26,175,132,0.30); }
+    .nav-btn.active-ghg svg { filter: drop-shadow(0 0 4px rgba(29,201,152,0.55)); }
+    .nav-btn.active-elec { opacity: 1; border-left-color: var(--amata-b2); background: rgba(59,180,229,0.10); text-shadow: 0 0 8px rgba(59,180,229,0.25); }
+    .nav-btn.active-elec svg { filter: drop-shadow(0 0 4px rgba(59,180,229,0.55)); }
+
+    .theme-toggle { margin-top: auto; padding: 16px; border-top: 1px solid var(--sb-sep); }
+    .theme-btn { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13); border-radius: 6px; color: #FFFFFF; padding: 10px; font-size: 12px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: background 0.2s; }
+    .theme-btn:hover { background: rgba(255,255,255,0.12); }
+    .theme-btn svg { width: 14px; height: 14px; fill: white; }
+
+    /* ── Main Dashboard ── */
+    .main-content {
+      flex: 1; padding: 22px 28px; overflow-y: auto; background: var(--bg-body);
+      background-image: radial-gradient(ellipse 60% 200px at 50% 0, rgba(13,122,92,0.06) 0%, transparent 100%);
+      transition: background-color 0.3s;
+    }
+    [data-theme="dark"] .main-content { background-image: radial-gradient(ellipse 60% 200px at 50% 0, rgba(29,201,152,0.05) 0%, transparent 100%); }
+
+    .tab-pane { display: none; max-width: 1400px; margin: 0 auto; animation: fadeIn 0.35s; }
+    .tab-pane.active { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    h2 { font-size: 18px; font-weight: 700; color: var(--company-color); margin: 0 0 18px; letter-spacing: 0.2px; transition: color 0.3s; }
+
+    .card {
+      background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); padding: 18px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.90) inset, 0 2px 6px rgba(0,0,0,0.05), 0 8px 22px rgba(0,0,0,0.07), 0 18px 40px rgba(0,0,0,0.03);
+      position: relative; overflow: hidden; transition: 0.3s;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,1) 30%, rgba(255,255,255,1) 70%, transparent 100%);
+      border-radius: 8px 8px 0 0; pointer-events: none; z-index: 1;
+    }
+    [data-theme="dark"] .card { box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 2px 6px rgba(0,0,0,0.25), 0 8px 22px rgba(0,0,0,0.30), 0 18px 40px rgba(0,0,0,0.20); }
+    [data-theme="dark"] .card::before { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0.12) 70%, transparent 100%); }
+
+    .top-section { display: flex; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
+    .slicer-block { flex: 2; min-width: 600px; }
+    .slicers-container { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    .control-group label { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.7px; }
+
+    select, .kpi-select {
+      padding: 7px 10px; border: 1px solid var(--border-med); border-radius: 5px; font-size: 12px; background: var(--select-bg);
+      color: var(--text-main); min-width: 88px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.8) inset; cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--company-color); }
+    .kpi-select { padding: 2px 5px; font-size: 11px; min-width: 58px; margin-left: 4px; }
+    .v-divider { width: 1px; background: var(--border-color); height: 28px; align-self: flex-end; margin-bottom: 5px; }
+
+    .checkbox-group { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+    .checkbox-group input[type="checkbox"] {
+      appearance: none; width: 15px; height: 15px; border-radius: 4px; border: 1px solid var(--border-med); background: var(--select-bg);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06); cursor: pointer; position: relative; flex-shrink: 0;
+    }
+    .checkbox-group input[type="checkbox"]:checked { background: var(--company-color); border-color: var(--company-color); }
+    .checkbox-group input[type="checkbox"]:checked::after { content: ''; position: absolute; top: 2px; left: 4px; width: 5px; height: 8px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
+
+    .kpi-container { display: flex; gap: 14px; flex: 1; min-width: 260px; align-items: stretch; }
+    .kpi-card { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 14px; }
+    .kpi-card.kpi-neutral::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--amata-g2), var(--amata-g4)); border-radius: 8px 8px 0 0; }
+    .kpi-card.kpi-baseline::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--amata-b1), var(--amata-b2)); border-radius: 8px 8px 0 0; }
+
+    .kpi-title { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+    .kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+
+    .positive { color: #C8372D; }
+    .negative { color: var(--amata-g2); }
+    [data-theme="dark"] .negative { color: var(--amata-g4); }
+
+    .charts-row-1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 18px; }
+    .chart-box-small { height: 300px; }
+    .chart-box-large { height: 400px; margin-bottom: 18px; position: relative; }
+
+    .chart-control-tr { position: absolute; top: 14px; right: 18px; z-index: 10; font-size: 12px; color: var(--text-faint); display: flex; align-items: center; gap: 16px; font-weight: 500; }
+    .chart-control-tr label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .chart-control-tr input[type="checkbox"] { appearance: none; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-med); background: var(--select-bg); cursor: pointer; position: relative; }
+    .chart-control-tr input[type="checkbox"]:checked { background: var(--company-color); border-color: var(--company-color); }
+    .chart-control-tr input[type="checkbox"]:checked::after { content: ''; position: absolute; top: 1px; left: 3px; width: 5px; height: 7px; border: 1.5px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
+
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: linear-gradient(90deg, var(--amata-g1) 0%, var(--amata-g2) 100%); color: #ffffff; font-size: 12px; font-weight: 700; border-bottom: 2px solid var(--amata-g1); position: sticky; top: 0; }
+    th:first-child { border-radius: 6px 0 0 0; }
+    th:last-child  { border-radius: 0 6px 0 0; }
+    tr:hover td { background: rgba(13,122,92,0.03); }
+    [data-theme="dark"] tr:hover td { background: rgba(29,201,152,0.04); }
+    body.tab-elec th { background: linear-gradient(90deg, var(--amata-b1) 0%, var(--amata-b2) 100%); border-bottom-color: var(--amata-b1); }
+    
+    #loading {
+      font-family: system-ui, sans-serif; font-size: 15px; font-weight: 500;
+      color: var(--amata-g1); display: flex; justify-content: center; align-items: center;
+      height: 100vh; width: 100vw; background: #EDF0F4;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loading">Connecting to Secure SharePoint Infrastructure…</div>
+
+  <div id="app" style="display: none;">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <img src="https://amatavn.com/wp-content/uploads/2025/05/logo-30Y.png" alt="AMATA VN" onerror="this.style.display='none';">
+        <div class="sidebar-brand-text">ESG Portal</div>
+      </div>
+
+      <div class="sidebar-section">Dashboards</div>
+      <button class="nav-btn active-ghg" id="btn-tab1" onclick="switchTab('tab1', this)">
+        <svg viewBox="0 0 24 24"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66l.95-2.3c.48.17.96.3 1.34.3C12 20 22 14 22 4c-1.33 1.33-3.33 2.67-5 4z"/></svg> Greenhouse Gas
+      </button>
+      <button class="nav-btn" id="btn-tab2" onclick="switchTab('tab2', this)">
+        <svg viewBox="0 0 24 24"><path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66C7.67 12.24 10.72 6.73 14 1h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C14.95 14.25 11.68 19.82 11 21z"/></svg> Electricity
+      </button>
+
+      <div class="theme-toggle">
+        <button class="theme-btn" onclick="toggleTheme()">
+          <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4C12.92 3.04 12.46 3 12 3z"/></svg> Toggle Theme
+        </button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      
+      <div id="tab1" class="tab-pane active">
+        <h2>Greenhouse Gas Dashboard</h2>
+        <div class="top-section">
+          <div class="card slicer-block">
+            <div class="slicers-container">
+              <div class="control-group"><label>Area</label><select id="t1_area" onchange="updateTab1Dropdowns()"></select></div>
+              <div class="control-group"><label>Year</label><select id="t1_year" onchange="updateTab1Dropdowns()"></select></div>
+              <div class="v-divider"></div>
+              <div class="control-group"><label>Start Mth</label><select id="t1_start" onchange="updateTab1()"></select></div>
+              <div class="control-group"><label>End Mth</label><select id="t1_end" onchange="updateTab1()"></select></div>
+              <div class="v-divider"></div>
+              <div class="control-group"><label>Activity</label><select id="t1_activity" onchange="updateTab1()"></select></div>
+            </div>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="t1_s1" checked onchange="updateTab1()"> Scope 1</label>
+              <label><input type="checkbox" id="t1_s2" checked onchange="updateTab1()"> Scope 2</label>
+              <label><input type="checkbox" id="t1_s3" onchange="updateTab1()"> Scope 3</label>
+            </div>
+          </div>
+          <div class="kpi-container">
+            <div class="card kpi-card kpi-neutral"><div class="kpi-title">YoY % Change</div><div id="t1_yoy" class="kpi-value">--</div></div>
+            <div class="card kpi-card kpi-baseline"><div class="kpi-title">Vs <select id="t1_base_yr" class="kpi-select" onchange="updateTab1()"></select></div><div id="t1_base" class="kpi-value">--</div></div>
+          </div>
+        </div>
+
+        <div class="charts-row-1">
+          <div class="card chart-box-small"><canvas id="t1_scope"></canvas></div>
+          <div class="card chart-box-small"><canvas id="t1_type"></canvas></div>
+          <div class="card chart-box-small"><canvas id="t1_activity_chart"></canvas></div>
+        </div>
+        <div class="card chart-box-large"><div class="chart-control-tr"><label><input type="checkbox" id="t1_comp_ghg" onchange="updateTab1()"> Compare with previous year</label></div><canvas id="t1_month_ghg"></canvas></div>
+        <div class="card chart-box-large"><div class="chart-control-tr"><label><input type="checkbox" id="t1_fc_acc" onchange="updateTab1()"> Forecast to year end</label><label><input type="checkbox" id="t1_comp_acc" onchange="updateTab1()"> Compare with previous year</label></div><canvas id="t1_month_acc"></canvas></div>
+
+        <div class="card table-container">
+          <h3 style="margin-top:0; color:var(--company-color); font-size:15px; font-weight:700; margin-bottom:10px;">Activity Breakdown (GHG Emissions)</h3>
+          <table>
+            <thead><tr><th>Activity</th><th id="t1_th_prev">Prev Year</th><th id="t1_th_curr">Current Year</th><th>% Change</th></tr></thead>
+            <tbody id="t1_table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab2" class="tab-pane">
+        <h2>Electricity Dashboard</h2>
+        <div class="top-section">
+          <div class="card slicers-container" style="flex:1;">
+            <div class="control-group"><label>Area</label><select id="t2_area" onchange="updateTab2Dropdowns()"></select></div>
+            <div class="control-group"><label>Year</label><select id="t2_year" onchange="updateTab2Dropdowns()"></select></div>
+            <div class="v-divider"></div>
+            <div class="control-group"><label>Start Mth</label><select id="t2_start" onchange="updateTab2()"></select></div>
+            <div class="control-group"><label>End Mth</label><select id="t2_end" onchange="updateTab2()"></select></div>
+            <div class="v-divider"></div>
+            <div class="control-group"><label>Activity</label><select id="t2_activity" onchange="updateTab2()"></select></div>
+          </div>
+        </div>
+
+        <div class="top-section" style="gap:14px; margin-bottom:18px;">
+          <div class="card kpi-card kpi-baseline" style="flex:1;"><div class="kpi-title">Total Amount (kWh)</div><div id="t2_tot_amt" class="kpi-value">--</div></div>
+          <div class="card kpi-card kpi-baseline" style="flex:1;"><div class="kpi-title">Total GHG (tCO2e)</div><div id="t2_tot_ghg" class="kpi-value">--</div></div>
+          <div class="card kpi-card kpi-neutral" style="flex:1;"><div class="kpi-title">YoY % Change</div><div id="t2_yoy" class="kpi-value">--</div></div>
+          <div class="card kpi-card kpi-baseline" style="flex:1;"><div class="kpi-title">Vs <select id="t2_base_yr" class="kpi-select" onchange="updateTab2()"></select></div><div id="t2_base" class="kpi-value">--</div></div>
+        </div>
+
+        <div class="card chart-box-large"><div class="chart-control-tr"><label><input type="checkbox" id="t2_comp_amt" onchange="updateTab2()"> Compare with previous year</label></div><canvas id="t2_month_amt"></canvas></div>
+        <div class="card chart-box-large"><div class="chart-control-tr"><label><input type="checkbox" id="t2_fc_acc" onchange="updateTab2()"> Forecast to year end</label><label><input type="checkbox" id="t2_comp_acc" onchange="updateTab2()"> Compare with previous year</label></div><canvas id="t2_month_acc"></canvas></div>
+
+        <div class="card table-container">
+          <h3 style="margin-top:0; color:var(--company-color); font-size:15px; font-weight:700; margin-bottom:10px;">Activity Breakdown (Amount kWh)</h3>
+          <table>
+            <thead><tr><th>Activity</th><th id="t2_th_prev">Prev Year</th><th id="t2_th_curr">Current Year</th><th>% Change</th></tr></thead>
+            <tbody id="t2_table"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════
+    // NATIVE SHAREPOINT LOCATION TRACKING CONFIGURATION
+    // ═══════════════════════════════════════════════
+    const SHAREPOINT_SITE_URL = "https://amatanakorn.sharepoint.com/sites/ITDeptSharepoint";
+    const EXCEL_RELATIVE_PATH = "/sites/ITDeptSharepoint/Shared%20Documents/AI%20project/Test%20HTML/GHG_Data.xlsx";
+    const EXCEL_SHEET_NAME    = "GHG_Data";
+
+    // Application state variables
+    let rawData = [];
+    let elecData = [];
+    let charts = {};
+    let isDarkMode = false;
+
+    // ═══════════════════════════════════════════════
+    // BOOT SEQUENCE — ZERO INTERRUPTIONS / NO POPUPS
+    // ═══════════════════════════════════════════════
+    window.onload = async function () {
+      try {
+        document.getElementById('loading').innerText = "Loading Corporate ESG Data Securely...";
+
+        // Constructing native SharePoint REST Endpoint to safely draw binary rows using parent identity cookies
+        const sharePointApiUrl = `${SHAREPOINT_SITE_URL}/_api/web/GetFileByServerRelativeUrl('${EXCEL_RELATIVE_PATH}')/$value`;
+
+        const fileRes = await fetch(sharePointApiUrl, {
+          credentials: 'include',
+          headers: { 'Accept': 'application/octet-stream' }
+        });
+
+        if (!fileRes.ok) {
+          throw new Error(
+            `SharePoint file tracking rejected with code status ${fileRes.status}.\n\n` +
+            `Verify that:\n` +
+            `1. The Excel file name is spelled exactly as: ${EXCEL_RELATIVE_PATH}\n` +
+            `2. Your current user account has standard Read access permissions to that folder.`
+          );
+        }
+
+        const buffer   = await fileRes.arrayBuffer();
+        const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+        const sheetName = workbook.SheetNames.find(n => n.trim() === EXCEL_SHEET_NAME);
+        
+        if (!sheetName) {
+          throw new Error(`Target worksheet tab "${EXCEL_SHEET_NAME}" not found inside the uploaded Excel sheet.`);
+        }
+
+        const parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+        
+        // Clean whitespace from headers natively to make it robust against mismatched data entries
+        const normalizedData = parsedRows.map(row => {
+          const cleaned = {};
+          Object.keys(row).forEach(k => { cleaned[k.trim()] = row[k]; });
+          return cleaned;
+        });
+
+        initializeDashboard(normalizedData);
+
+      } catch (err) {
+        console.error("Dashboard launch failure:", err);
+        showError(err.message || err.toString());
+      }
+    };
+
+    // ═══════════════════════════════════════════════
+    // DASHBOARD INITIALISATION
+    // ═══════════════════════════════════════════════
+    function initializeDashboard(data) {
+      rawData  = data;
+      elecData = rawData.filter(r => r.Type && r.Type.toString().toLowerCase().trim() === 'electricity');
+
+      const areas  = [...new Set(rawData.map(i => i.Area))].filter(Boolean);
+      const years  = [...new Set(rawData.map(i => i.Year))].filter(Boolean).sort().reverse();
+      const months = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+      populateDropdown('t1_area',    areas);
+      populateDropdown('t1_year',    years);
+      populateDropdown('t1_base_yr', years, 2017);
+      populateDropdown('t1_start',   months, 1);
+      populateDropdown('t1_end',     months, 12);
+
+      populateDropdown('t2_area',    areas);
+      populateDropdown('t2_year',    years);
+      populateDropdown('t2_base_yr', years, 2017);
+      populateDropdown('t2_start',   months, 1);
+      populateDropdown('t2_end',     months, 12);
+
+      updateTab1Dropdowns(false);
+      updateTab2Dropdowns(false);
+
+      document.documentElement.style.setProperty('--company-color', 'var(--color-t1)');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display     = 'flex';
+      updateTab1();
+    }
+
+    function populateDropdown(id, values, defaultVal) {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '';
+      values.forEach(val => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.text  = val;
+        if (val == defaultVal) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ═══════════════════════════════════════════════
+    // UI — TAB SWITCHING & THEME
+    // ═══════════════════════════════════════════════
+    function switchTab(tabId, btnElement) {
+      document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.remove('active-ghg', 'active-elec');
+        b.style.opacity = '';
+      });
+      document.getElementById(tabId).classList.add('active');
+
+      if (tabId === 'tab1') {
+        btnElement.classList.add('active-ghg');
+        document.documentElement.style.setProperty('--company-color', 'var(--color-t1)');
+        document.body.classList.remove('tab-elec');
+        updateTab1();
+      } else {
+        btnElement.classList.add('active-elec');
+        document.documentElement.style.setProperty('--company-color', 'var(--color-t2)');
+        document.body.classList.add('tab-elec');
+        updateTab2();
+      }
+    }
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+      Chart.defaults.color       = isDarkMode ? '#8FA8BA' : '#4A6070';
+      Chart.defaults.borderColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+      if (document.getElementById('tab1').classList.contains('active')) updateTab1();
+      else updateTab2();
+    }
+
+    // ═══════════════════════════════════════════════
+    // TAB 1 — GHG RENDERING PIPELINE
+    // ═══════════════════════════════════════════════
+    function updateTab1Dropdowns(triggerUpdate = true) {
+      const area  = document.getElementById('t1_area').value;
+      const yr    = document.getElementById('t1_year').value;
+      const fData = rawData.filter(r => r.Area == area && r.Year == yr);
+      const acts  = ['All', ...new Set(fData.map(i => i.Activity))].filter(Boolean);
+      const sel   = document.getElementById('t1_activity');
+      const curr  = sel ? sel.value : 'All';
+      populateDropdown('t1_activity', acts, acts.includes(curr) ? curr : 'All');
+      if (triggerUpdate) updateTab1();
+    }
+
+    function updateTab1() {
+      const area    = document.getElementById('t1_area').value;
+      const yr      = parseInt(document.getElementById('t1_year').value);
+      const baseYr  = parseInt(document.getElementById('t1_base_yr').value);
+      const startM  = parseInt(document.getElementById('t1_start').value);
+      const endM    = parseInt(document.getElementById('t1_end').value);
+      const act     = document.getElementById('t1_activity').value;
+      const s1      = document.getElementById('t1_s1').checked;
+      const s2      = document.getElementById('t1_s2').checked;
+      const s3      = document.getElementById('t1_s3').checked;
+      const compGhg = document.getElementById('t1_comp_ghg').checked;
+      const compAcc = document.getElementById('t1_comp_acc').checked;
+      const fcAcc   = document.getElementById('t1_fc_acc').checked;
+
+      const baseFilter = r => {
+        if (r.Area != area || (act !== 'All' && r.Activity != act)) return false;
+        return (s1 && r.SCOPE === 'Scope 1') || (s2 && r.SCOPE === 'Scope 2') || (s3 && r.SCOPE === 'Scope 3');
+      };
+      const inRange = r => r.Month >= startM && r.Month <= endM;
+
+      let curr = 0, prev = 0, base = 0;
+      rawData.forEach(r => {
+        if (baseFilter(r) && inRange(r)) {
+          const v = parseFloat(r['GHG Emissions']) || 0;
+          if (r.Year == yr)       curr += v;
+          if (r.Year == yr - 1)   prev += v;
+          if (r.Year == baseYr)   base += v;
+        }
+      });
+      renderKPI('t1_yoy',  curr, prev);
+      renderKPI('t1_base', curr, base);
+
+      const fData = rawData.filter(r => baseFilter(r) && inRange(r) && r.Year == yr);
+      drawStandardChart('t1_scope',          'bar', 'SCOPE',    'GHG Emissions', 'GHG Emissions by SCOPE',    fData, true, 0);
+      drawStandardChart('t1_type',           'bar', 'Type',     'GHG Emissions', 'GHG Emissions by TYPE',     fData, true, 0);
+      drawStandardChart('t1_activity_chart', 'bar', 'Activity', 'GHG Emissions', 'GHG Emissions by Activity', fData, true, 0);
+
+      const ghgCurr = {}, ghgPrev = {}, accCurr = {}, accPrev = {};
+      for (let m = 1; m <= 12; m++) { ghgCurr[m]=0; ghgPrev[m]=0; accCurr[m]=0; accPrev[m]=0; }
+      rawData.forEach(r => {
+        if (baseFilter(r)) {
+          if (r.Year == yr)     { ghgCurr[r.Month] += parseFloat(r['GHG Emissions'])    || 0; accCurr[r.Month] += parseFloat(r['Accumulated GHG'])    || 0; }
+          if (r.Year == yr - 1) { ghgPrev[r.Month] += parseFloat(r['GHG Emissions'])    || 0; accPrev[r.Month] += parseFloat(r['Accumulated GHG'])    || 0; }
+        }
+      });
+      drawComparativeLineChart('t1_month_ghg', ghgCurr, ghgPrev, startM, endM, compGhg, false,  'GHG Emissions Trend by Month',     2);
+      drawComparativeLineChart('t1_month_acc', accCurr, accPrev, startM, endM, compAcc, fcAcc,   'Accumulated GHG Trend by Month',   0);
+
+      const tableFilteredData = rawData.filter(baseFilter);
+      renderTable('t1_table','t1_th_prev','t1_th_curr', tableFilteredData, area, yr, startM, endM, act, 'GHG Emissions');
+    }
+
+    // ═══════════════════════════════════════════════
+    // TAB 2 — ELECTRICITY RENDERING PIPELINE
+    // ═══════════════════════════════════════════════
+    function updateTab2Dropdowns(triggerUpdate = true) {
+      const area  = document.getElementById('t2_area').value;
+      const yr    = document.getElementById('t2_year').value;
+      const fElec = elecData.filter(r => r.Area == area && r.Year == yr);
+      const acts  = ['All', ...new Set(fElec.map(i => i.Activity))].filter(Boolean);
+      const sel   = document.getElementById('t2_activity');
+      const curr  = sel ? sel.value : 'All';
+      populateDropdown('t2_activity', acts, acts.includes(curr) ? curr : 'All');
+      if (triggerUpdate) updateTab2();
+    }
+
+    function updateTab2() {
+      const area    = document.getElementById('t2_area').value;
+      const yr      = parseInt(document.getElementById('t2_year').value);
+      const baseYr  = parseInt(document.getElementById('t2_base_yr').value);
+      const startM  = parseInt(document.getElementById('t2_start').value);
+      const endM    = parseInt(document.getElementById('t2_end').value);
+      const act     = document.getElementById('t2_activity').value;
+      const compAmt = document.getElementById('t2_comp_amt').checked;
+      const compAcc = document.getElementById('t2_comp_acc').checked;
+      const fcAcc   = document.getElementById('t2_fc_acc').checked;
+
+      const baseFilter = r => r.Area == area && (act === 'All' || r.Activity == act);
+      const inRange    = r => r.Month >= startM && r.Month <= endM;
+
+      let totAmt = 0, totGhg = 0;
+      elecData.forEach(r => {
+        if (baseFilter(r) && inRange(r) && r.Year == yr) {
+          totAmt += parseFloat(r['Amount'])        || 0;
+          totGhg += parseFloat(r['GHG Emissions']) || 0;
+        }
+      });
+      document.getElementById('t2_tot_amt').innerText = totAmt.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      document.getElementById('t2_tot_ghg').innerText = totGhg.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+      let currAmt = 0, prevAmt = 0, baseAmt = 0;
+      elecData.forEach(r => {
+        if (baseFilter(r) && inRange(r)) {
+          const v = parseFloat(r['Amount']) || 0;
+          if (r.Year == yr)     currAmt += v;
+          if (r.Year == yr - 1) prevAmt += v;
+          if (r.Year == baseYr) baseAmt += v;
+        }
+      });
+      renderKPI('t2_yoy',  currAmt, prevAmt);
+      renderKPI('t2_base', currAmt, baseAmt);
+
+      const amtCurr = {}, amtPrev = {}, accCurr = {}, accPrev = {};
+      for (let m = 1; m <= 12; m++) { amtCurr[m]=0; amtPrev[m]=0; accCurr[m]=0; accPrev[m]=0; }
+      elecData.forEach(r => {
+        if (baseFilter(r)) {
+          if (r.Year == yr)     { amtCurr[r.Month] += parseFloat(r['Amount'])             || 0; accCurr[r.Month] += parseFloat(r['Accumulated amount']) || 0; }
+          if (r.Year == yr - 1) { amtPrev[r.Month] += parseFloat(r['Amount'])             || 0; accPrev[r.Month] += parseFloat(r['Accumulated amount']) || 0; }
+        }
+      });
+      drawComparativeLineChart('t2_month_amt', amtCurr, amtPrev, startM, endM, compAmt, false, 'Amount (kWh) Trend by Month',             0);
+      drawComparativeLineChart('t2_month_acc', accCurr, accPrev, startM, endM, compAcc, fcAcc,  'Accumulated Amount (kWh) Trend by Month', 0);
+
+      renderTable('t2_table','t2_th_prev','t2_th_curr', elecData, area, yr, startM, endM, act, 'Amount');
+    }
+
+    // ═══════════════════════════════════════════════
+    // CHART RENDERING ENGINES
+    // ═══════════════════════════════════════════════
+    function renderKPI(id, current, comparison) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!comparison || comparison === 0) {
+        el.innerText  = current > 0 ? "New" : "--";
+        el.className  = "kpi-value";
+        return;
+      }
+      const pct     = ((current - comparison) / comparison) * 100;
+      el.innerText  = (pct > 0 ? "+" : "") + pct.toFixed(1) + "%";
+      el.className  = "kpi-value " + (pct > 0 ? "positive" : "negative");
+    }
+
+    function drawStandardChart(canvasId, type, groupField, valueField, title, data, isHorizontal, decimals) {
+      if (charts[canvasId]) charts[canvasId].destroy();
+      const el = document.getElementById(canvasId);
+      if (!el) return;
+      const ctx        = el.getContext('2d');
+      const compColor  = resolveColor(getCompanyColor());
+      const textColor  = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#4A6070';
+
+      const groups = {};
+      data.forEach(r => {
+        const key = r[groupField] || 'Unknown';
+        groups[key] = (groups[key] || 0) + (parseFloat(r[valueField]) || 0);
+      });
+
+      charts[canvasId] = new Chart(ctx, {
+        type,
+        data: {
+          labels: Object.keys(groups),
+          datasets: [{
+            label: title,
+            data: Object.values(groups),
+            backgroundColor: compColor + 'BB',
+            borderColor: compColor,
+            borderWidth: 1,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: isHorizontal ? 'y' : 'x',
+          layout:  { padding: { right: isHorizontal ? 55 : 10 } },
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: title, color: textColor, font: { size: 12, weight: '700' } },
+            datalabels: {
+              display: true, anchor: 'end', align: isHorizontal ? 'right' : 'top',
+              color: textColor, font: { size: 10, weight: '600' },
+              formatter: v => v > 0 ? v.toLocaleString(undefined, { maximumFractionDigits: decimals }) : ''
+            }
+          },
+          scales: {
+            x: { grid: { display: !isHorizontal }, ticks: { color: textColor, font: { size: 10 } } },
+            y: { beginAtZero: true, grid: { display: isHorizontal }, ticks: { color: textColor, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function drawComparativeLineChart(canvasId, currAgg, prevAgg, startM, endM, doCompare, doForecast, title, decimals) {
+      if (charts[canvasId]) charts[canvasId].destroy();
+      const el = document.getElementById(canvasId);
+      if (!el) return;
+      const ctx           = el.getContext('2d');
+      const rootStyles    = getComputedStyle(document.documentElement);
+      const compColor     = resolveColor(getCompanyColor());
+      const textColor     = rootStyles.getPropertyValue('--text-muted').trim()  || '#4A6070';
+      const prevLineColor = rootStyles.getPropertyValue('--prev-line').trim()   || 'rgba(148, 163, 184, 0.50)';
+      const prevLblColor  = rootStyles.getPropertyValue('--prev-label').trim()  || 'rgba(74,96,112,0.50)';
+
+      const xStart = doForecast ? 1 : startM;
+      const xEnd   = doForecast ? 12 : endM;
+      const labels = [], currVals = [], prevVals = [], fcVals = [];
+
+      for (let m = xStart; m <= xEnd; m++) {
+        labels.push(m);
+        currVals.push((m >= startM && m <= endM) ? (currAgg[m] || 0) : null);
+        if (doCompare) prevVals.push((doForecast || (m >= startM && m <= endM)) ? (prevAgg[m] || 0) : null);
+        if (doForecast) {
+          if      (m < endM)   fcVals.push(null);
+          else if (m === endM) fcVals.push(currAgg[endM] || 0);
+          else                 fcVals.push(((currAgg[endM] || 0) / endM) * m);
+        }
+      }
+
+      const datasets = [{
+        label: 'Selected Year', data: currVals,
+        backgroundColor: compColor + '22', borderColor: compColor, borderWidth: 2, fill: true, tension: 0.1,
+        pointBackgroundColor: '#fff', pointBorderColor: compColor, pointBorderWidth: 2, pointRadius: 4, spanGaps: true,
+        datalabels: { anchor: 'end', align: 'top', color: compColor, font: { weight: 'bold', size: 12 }, formatter: v => v !== null ? Number(v).toFixed(decimals) : '' }
+      }];
+
+      if (doCompare) {
+        datasets.push({
+          label: 'Previous Year', data: prevVals,
+          backgroundColor: 'transparent', borderColor: prevLineColor, borderWidth: 2, fill: false, tension: 0.1,
+          pointBackgroundColor: '#fff', spanGaps: true,
+          datalabels: { anchor: 'start', align: 'bottom', color: prevLblColor, font: { weight: 'bold', size: 11 }, formatter: v => v !== null ? Number(v).toFixed(decimals) : '' }
+        });
+      }
+
+      if (doForecast && endM > 0) {
+        const rate   = (currAgg[endM] || 0) / endM;
+        const fc12   = rate * 12;
+        const p12    = prevAgg[12] || 0;
+        const pct    = p12 > 0 ? ((fc12 - p12) / p12) * 100 : 0;
+        const diffTxt = pct > 0 ? `Increase ${pct.toFixed(1)}% from previous` : `Decrease ${Math.abs(pct).toFixed(1)}% from previous`;
+
+        datasets.push({
+          label: 'Forecast', data: fcVals,
+          backgroundColor: 'transparent', borderColor: compColor + '90', borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0,
+          pointBackgroundColor: '#fff', spanGaps: true,
+          datalabels: {
+            anchor: 'end', align: 'top', color: compColor, font: { weight: 'bold', size: 11 }, textAlign: 'center',
+            formatter: (v, ctx) => (ctx.dataIndex === labels.length - 1 && v !== null) ? Number(v).toFixed(decimals) + '\n' + diffTxt : ''
+          }
+        });
+      }
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'line', data: { labels, datasets },
+        options: {
+          layout: { padding: { top: 40, bottom: doCompare ? 22 : 10, right: 65, left: 10 } },
+          plugins: {
+            title:  { display: true, text: title, font: { size: 13, weight: '700' }, color: textColor, padding: { bottom: 10 } },
+            legend: { display: true, position: 'bottom', labels: { color: textColor, usePointStyle: true, pointStyleWidth: 14 } }
+          },
+          scales: { x: { grid: { display: false }, ticks: { color: textColor } }, y: { beginAtZero: true, ticks: { color: textColor } } },
+          responsive: true, maintainAspectRatio: false
+        }
+      });
+    }
+
+    function renderTable(tbodyId, thPrevId, thCurrId, dataset, area, yr, startM, endM, act, valCol) {
+      const thP = document.getElementById(thPrevId);
+      const thC = document.getElementById(thCurrId);
+      if (thP) thP.innerText = `${yr - 1} ${valCol}`;
+      if (thC) thC.innerText = `${yr} ${valCol}`;
+
+      const actData = {};
+      dataset.forEach(r => {
+        if (r.Area == area && r.Month >= startM && r.Month <= endM && (act === 'All' || r.Activity == act)) {
+          const a = r.Activity;
+          if (!a) return;
+          const v = parseFloat(r[valCol]) || 0;
+          if (r.Year == yr || r.Year == yr - 1) {
+            if (!actData[a]) actData[a] = { p: 0, c: 0 };
+            if (r.Year == yr)     actData[a].c += v;
+            if (r.Year == yr - 1) actData[a].p += v;
+          }
+        }
+      });
+
+      const rowData = [];
+      Object.keys(actData).forEach(a => {
+        const { c, p } = actData[a];
+        if (c === 0 && p === 0) return;
+        let pctVal, pctText, cls;
+        if      (p > 0)             { pctVal = ((c - p) / p) * 100; pctText = (pctVal > 0 ? '+' : '') + pctVal.toFixed(2) + '%'; cls = pctVal > 0 ? 'positive' : 'negative'; }
+        else if (c > 0 && p === 0)  { pctVal = Infinity; pctText = 'New'; cls = 'positive'; }
+        else                        { pctVal = -100; pctText = '-100.00%'; cls = 'negative'; }
+        rowData.push({ activity: a, prev: p, curr: c, pctVal, pctText, cls });
+      });
+
+      // Automated mathematical layout sorting configuration
+      rowData.sort((a, b) => {
+        const va = a.pctVal === Infinity ? Number.MAX_VALUE : a.pctVal;
+        const vb = b.pctVal === Infinity ? Number.MAX_VALUE : b.pctVal;
+        return vb - va;
+      });
+
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+      tbody.innerHTML = rowData.map(row => `
+        <tr>
+          <td>${row.activity}</td>
+          <td>${row.prev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td>${row.curr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="${row.cls}" style="font-weight:600">${row.pctText}</td>
+        </tr>
+      `).join('');
+    }
+
+    function getCompanyColor() { return getComputedStyle(document.documentElement).getPropertyValue('--company-color').trim(); }
+    function resolveColor(varStr) { const m = varStr.match(/var\((--[\w-]+)\)/); if (m) return getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim(); return varStr; }
+
+    function showError(message) {
+      document.getElementById('loading').innerHTML = `
+        <div style="color: #C8372D; font-weight: bold; padding: 24px; max-width: 620px; margin: 40px auto; background: #FFF; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: left; font-family: system-ui, sans-serif;">
+          <p style="margin-bottom: 12px; font-size: 16px;">⚠ Dashboard Connection Error</p>
+          <pre style="font-weight: normal; font-family: monospace; font-size: 13px; background: #F5F7FA; padding: 12px; border-radius: 4px; border-left: 4px solid #C8372D; color: #1C2B35; white-space: pre-wrap; word-break: break-word;">${message}</pre>
+          <p style="margin-top:14px; font-size:12px; color:#4A6070; font-weight:normal;">Check the browser console (F12 → Console) for the full stack trace.</p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
